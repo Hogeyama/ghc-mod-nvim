@@ -1,0 +1,31 @@
+name:                ghc-mod-nvim
+version:             0.1.0.0
+build-type:          Simple
+--homepage:            https://github.com/githubuser/hoge#readme
+license-file:        LICENSE
+copyright:           2017 Naoki Iwayama
+build-type:          Simple
+cabal-version:       >=1.10
+
+library
+  ghc-options:          -O3 -Wall
+  exposed-modules:      Neovim.GhcModNvim
+  other-modules:        Neovim.GhcModNvim.Utility
+                      , Neovim.GhcModNvim.Types
+                      , Neovim.GhcModNvim.Plugin
+                      , Neovim.GhcModNvim.GhcMod.Parser
+                      , Neovim.GhcModNvim.GhcMod.Command
+  build-depends:        base >= 4.7 && < 5
+                      , nvim-hs >= 0.2.2
+                      , nvim-hs-contrib
+                      , mtl
+                      , lens
+                      , extra
+                      , parsec
+                      , process
+                      , filepath
+                      , exceptions
+                      , bytestring
+                      , basic-prelude
+  default-language:     Haskell2010
+
