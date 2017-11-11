@@ -1,7 +1,7 @@
 
 # ghc-mod-nvim
 
-Wrapper plugin of [ghc-mod](https://hackage.haskell.org/package/ghc-mod) for nvim-hs,
+Wrapper plugin of [ghc-mod](https://hackage.haskell.org/package/ghc-mod) for nvim-hs.
 
 ## Commands
 
