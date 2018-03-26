@@ -1,13 +1,10 @@
 
-#resolver: nightly-2017-08-02
-
-resolver: lts-8.6
+resolver: lts-10.0
 
 packages:
 - '.'
 
 extra-deps:
-  - nvim-hs-0.2.2
+  - nvim-hs-0.2.5
   - nvim-hs-contrib-0.2.0
-  - nvim-hs-ghcid-0.2.0
 

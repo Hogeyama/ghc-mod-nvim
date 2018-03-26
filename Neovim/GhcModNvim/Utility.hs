@@ -22,7 +22,7 @@ module Neovim.GhcModNvim.Utility (
   ) where
 
 import           Neovim
-import           Prelude                hiding (log)
+import           Prelude
 import           Control.Lens
 import           Control.Monad.Catch    (catch, SomeException)
 

@@ -3,7 +3,7 @@
 
 module Neovim.GhcModNvim.GhcMod.Command where
 
-import           Prelude                 hiding (log)
+import           Prelude
 
 import           Neovim
 import           Neovim.Context
@@ -18,22 +18,38 @@ import           Control.Monad.Catch     (SomeException, catch)
 import           System.IO
 import           System.Process
 import           System.Timeout          (timeout)
+import           System.Exit             (exitSuccess)
+import           Control.Concurrent      (threadDelay)
+import           Control.Monad.Extra     (ifM)
 
 -------------------------------------------------------------------------------
 -- Commands
 -------------------------------------------------------------------------------
 
-lint :: NeoGhcMod String
-lint = neoGhcMod "lint" []
-
 checkSyntax :: NeoGhcMod String
-checkSyntax = neoGhcMod "check" []
+checkSyntax = neoGhcMod "check" . (:[]) =<< nvimCurrentFile
+
+lint :: NeoGhcMod String
+lint = neoGhcMod "lint" . (:[]) =<< nvimCurrentFile
+
+lintAll :: NeoGhcMod String
+lintAll = do
+    s <- neoGhcMod "lint" ["."]
+    if s == oldVersionErrorMsg
+      then err oldVersionError
+      else return s
+  where
+    oldVersionErrorMsg
+      = "Dummy:0:0:Error:.: openFile: inappropriate type (is a directory)\n"
+    oldVersionError
+      = "This version of ghc-mod does not accept lint commadn for directory"
+    -- TODO display the version
 
 info :: String -> NeoGhcMod String
-info id' = neoGhcMod "info" [id']
+info id' = neoGhcMod "info" . (:[id']) =<< nvimCurrentFile
 
 types :: Int -> Int -> NeoGhcMod String
-types line col = neoGhcMod "type" [show line, show col]
+types line col = neoGhcMod "type" . (:[show line, show col]) =<< nvimCurrentFile
 
 -------------------------------------------------------------------------------
 -- Main Wrapper
@@ -41,8 +57,7 @@ types line col = neoGhcMod "type" [show line, show col]
 
 neoGhcMod :: String -> [String] -> NeoGhcMod String
 neoGhcMod cmd args = do
-  f <- nvimCurrentFile
-  let cmd' = unwords $ cmd : f : args
+  let cmd' = unwords $ cmd : args
   (hin,hout,_herr,_p) <- getHandles
   liftIO (hPutStrLn hin cmd')
   liftIO (readResult_ hout) >>= \case
@@ -89,8 +104,12 @@ createHandles = do
 
     ghcmodErrorHandler :: Handle -> Neovim () () ()
     ghcmodErrorHandler herr = forever $ do
-      s <- liftIO $ hGetLine herr
-      unless (s == ignorableMessage) $ reportError s
+      b <- liftIO (hIsClosed herr)
+      if b
+        then liftIO exitSuccess
+        else do
+          s <- liftIO $ hGetLine herr
+          unless (s == ignorableMessage) $ reportError ("グワーッ: "++s)
 
     isTerminated :: ProcessHandle -> IO Bool
     isTerminated p = isJust <$> getProcessExitCode p
@@ -115,7 +134,11 @@ readResult_ :: Handle -> IO (Either String String)
 readResult_ h = bimap f f <$> go []
   where
     f     = unlines . reverse
-    line  = timeout (int2sec 10) (hGetLine h)
+    line  = timeout (int2sec 10) $
+              ifM (hIsEOF h)
+                (do threadDelay (int2sec 100)
+                    error "impossible")
+                (hGetLine h)
     go ss = line >>= \case
       Nothing -> return (Left ["timeout"])
       Just s

@@ -8,6 +8,7 @@ module Neovim.GhcModNvim.Plugin (
     neoGhcModCheck
   , neoGhcModInfo
   , neoGhcModLint
+  , neoGhcModLintAll
   , neoGhcModType
   , neoGhcModTypeClear
   ) where
@@ -45,6 +46,10 @@ neoGhcModLint :: CommandArguments -> NeoGhcMod ()
 neoGhcModLint _ = catchAnyException $
   setQFListAndOpenUnlessEmpty =<< runParser errorParser =<< C.lint
 
+neoGhcModLintAll :: CommandArguments -> NeoGhcMod ()
+neoGhcModLintAll _ = catchAnyException $
+  setQFListAndOpenUnlessEmpty =<< runParser errorParser =<< C.lintAll
+
 -------------------------------------------------------------------------------
 -- :NeoGhcModInfo
 -------------------------------------------------------------------------------
@@ -71,7 +76,7 @@ neoGhcModType CommandArguments{ bang } = catchAnyException $ nvimCurrentPos >>= 
             typeParser <$> C.types line col >>= \case
               Right []     -> error "NeoGhcModType: Impossible"
               Right (x:xs) -> display x >> typeState.tyList .= xs
-              Left _e      -> reportError $ "Cannot guess type"
+              Left _e      -> reportError "Cannot guess type"
         (x@TypeInfo{..} : xs) ->
             if (line1,col1) <= (line,col) && (line,col) <= (line2,col2)
               then typeState.tyList .= xs >> display x

@@ -1,10 +1,9 @@
 name:                ghc-mod-nvim
 version:             0.1.0.0
 build-type:          Simple
---homepage:            https://github.com/githubuser/hoge#readme
+homepage:            https://github.com/Hoegyama/ghc-mod-nvim
 license-file:        LICENSE
 copyright:           2017 Naoki Iwayama
-build-type:          Simple
 cabal-version:       >=1.10
 
 library
@@ -16,7 +15,7 @@ library
                       , Neovim.GhcModNvim.GhcMod.Parser
                       , Neovim.GhcModNvim.GhcMod.Command
   build-depends:        base >= 4.7 && < 5
-                      , nvim-hs >= 0.2.2
+                      , nvim-hs >= 0.2.4
                       , nvim-hs-contrib
                       , mtl
                       , lens

@@ -13,7 +13,7 @@ import           Text.Parsec.Language     (haskellDef)
 
 import qualified Neovim.Quickfix          as Q
 import           Neovim.Quickfix          (QuickfixErrorType(..))
-import           Data.List                (isSuffixOf, sort)
+import           Data.List                (sort)
 import           Data.Functor             (void)
 import           Data.Functor.Identity    (Identity)
 import           System.FilePath.Posix    ((</>))
@@ -33,15 +33,10 @@ errorParser basedir s =
     manyErrorWarn = many $ ewParser basedir
 
     toQFItems :: EWItem -> [Q.QuickfixListItem String]
-    toQFItems EWItem{..}
-        | tobeIgnored = []
-        | otherwise   = header : map strToQFItem messageEW
+    toQFItems EWItem{..} = header : map strToQFItem messageEW
       where
         Pos{..} = postionEW
         header = createQFItem file line col errTypeEW
-
-        tobeIgnored = any (`isSuffixOf` file) ignoreFiles
-        ignoreFiles = ["wrappers.hs"]
 
 -- ^ One Error or Warning
 data EWItem = EWItem {

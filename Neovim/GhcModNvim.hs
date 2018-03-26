@@ -19,6 +19,7 @@ plugin = wrapPlugin Plugin
           , $(command' 'neoGhcModTypeClear) ["async"]
           , $(command' 'neoGhcModCheck)     ["async"]
           , $(command' 'neoGhcModLint)      ["async"]
+          , $(command' 'neoGhcModLintAll)   ["async"]
           , $(command' 'neoGhcModInfo)      ["async"]
           ]
       }
