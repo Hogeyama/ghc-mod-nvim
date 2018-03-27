@@ -7,6 +7,7 @@ import           Prelude
 
 import           Neovim
 import           Neovim.Context
+import           Neovim.Context.Internal
 
 import           Neovim.GhcModNvim.Utility
 import           Neovim.GhcModNvim.Types
@@ -14,13 +15,16 @@ import           Neovim.GhcModNvim.Types
 import           Data.Maybe              (isJust)
 import           Control.Lens
 import           Control.Monad           (forever, unless)
-import           Control.Monad.Catch     (SomeException, catch)
+--import           Control.Monad.Catch     (SomeException, catch)
+import           Data.String             (IsString(..))
 import           System.IO
 import           System.Process
 import           System.Timeout          (timeout)
 import           System.Exit             (exitSuccess)
-import           Control.Concurrent      (threadDelay)
+import           Control.Concurrent      (forkIO, threadDelay)
 import           Control.Monad.Extra     (ifM)
+import           Control.DeepSeq (NFData)
+import           UnliftIO.Exception
 
 -------------------------------------------------------------------------------
 -- Commands
@@ -36,7 +40,7 @@ lintAll :: NeoGhcMod String
 lintAll = do
     s <- neoGhcMod "lint" ["."]
     if s == oldVersionErrorMsg
-      then err oldVersionError
+      then err (fromString oldVersionError)
       else return s
   where
     oldVersionErrorMsg
@@ -58,18 +62,18 @@ types line col = neoGhcMod "type" . (:[show line, show col]) =<< nvimCurrentFile
 neoGhcMod :: String -> [String] -> NeoGhcMod String
 neoGhcMod cmd args = do
   let cmd' = unwords $ cmd : args
-  (hin,hout,_herr,_p) <- getHandles
+  (hin,hout,_herr,_p) <- obtainHandles
   liftIO (hPutStrLn hin cmd')
   liftIO (readResult_ hout) >>= \case
     Right x -> return x
-    Left e  -> err $ show e
+    Left e  -> err $ fromString $ show e
 
 -------------------------------------------------------------------------------
 -- Handling ghc-modi
 -------------------------------------------------------------------------------
 
-getHandles :: NeoGhcMod (Handle,Handle,Handle,ProcessHandle)
-getHandles = use ghcmodHandlers >>= \case
+obtainHandles :: NeoGhcMod (Handle,Handle,Handle,ProcessHandle)
+obtainHandles = useTV handles >>= \case
   Just hs@(_,_,_,p) -> liftIO (getProcessExitCode p) >>= \case
     Just _  -> createHandles
     Nothing -> return hs
@@ -80,18 +84,16 @@ createHandles = do
     root <- getRoot
     reportInfo "wakening ghc-modi.."
     hs <- createHandles' root
-    ghcmodHandlers .= Just hs
+    assignTV handles (Just hs)
     return hs
   where
     createHandles' :: FilePath -> NeoGhcMod (Handle,Handle,Handle,ProcessHandle)
-    createHandles' root = do
+    createHandles' root = handleAny (err.fromString.show) $ do
         hs@(_hin,_hout,herr,p) <- liftIO $ wakeGhcMod root
-        _thID <- forkNeovim () () (ghcmodErrorHandler herr)
+        _thID <- forkNeovim () (ghcmodErrorHandler herr)
           -- TODO _thIDの管理
         whenM (liftIO (isTerminated p)) $ reportErrorAndFail "ghc-mod terminated"
         return hs
-      `catch`
-        \(e::SomeException) -> err (show e)
 
     wakeGhcMod :: FilePath -> IO (Handle,Handle,Handle,ProcessHandle)
     wakeGhcMod root = do
@@ -102,7 +104,7 @@ createHandles = do
         hSetBuffering herr NoBuffering
         return hs
 
-    ghcmodErrorHandler :: Handle -> Neovim () () ()
+    ghcmodErrorHandler :: Handle -> Neovim () ()
     ghcmodErrorHandler herr = forever $ do
       b <- liftIO (hIsClosed herr)
       if b
@@ -128,7 +130,7 @@ getRoot = do
   (_, ok, e) <- liftIO $ readCreateProcessWithExitCode prc ""
   if null e || init e == ignorableMessage
     then return $ init ok -- `init` removes a null character added by ghc-mod
-    else err $ "ghc-mod root:\n" ++ e
+    else err $ fromString $ "ghc-mod root:\n" ++ e
 
 readResult_ :: Handle -> IO (Either String String)
 readResult_ h = bimap f f <$> go []
@@ -155,4 +157,16 @@ whileJust m = reverse <$> go []
     go acc = m >>= \case
       Nothing -> return acc
       Just x  -> go (x:acc)
+
+
+forkNeovim :: forall env env' a. NFData a => env' -> Neovim env' a -> Neovim env ()
+forkNeovim r a = do
+  cfg <- ask'
+  let threadConfig = cfg
+        { pluginSettings = Nothing -- <- slightly problematic
+        , customConfig = r
+        }
+  _ <- liftIO . forkIO . void $ runNeovim threadConfig a
+  return ()
+
 

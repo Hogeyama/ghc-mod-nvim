@@ -7,7 +7,7 @@ copyright:           2017 Naoki Iwayama
 cabal-version:       >=1.10
 
 library
-  ghc-options:          -O3 -Wall
+  ghc-options:          -O3 -Wall -ddump-splices
   exposed-modules:      Neovim.GhcModNvim
   other-modules:        Neovim.GhcModNvim.Utility
                       , Neovim.GhcModNvim.Types
@@ -15,9 +15,10 @@ library
                       , Neovim.GhcModNvim.GhcMod.Parser
                       , Neovim.GhcModNvim.GhcMod.Command
   build-depends:        base >= 4.7 && < 5
-                      , nvim-hs >= 0.2.4
-                      , nvim-hs-contrib
+                      , nvim-hs >= 1.0.0.0
+                      , nvim-hs-contrib >= 1.0.0.0
                       , mtl
+                      , stm
                       , lens
                       , extra
                       , parsec
@@ -26,5 +27,7 @@ library
                       , exceptions
                       , bytestring
                       , basic-prelude
+                      , deepseq
+                      , unliftio
   default-language:     Haskell2010
 

@@ -7,14 +7,10 @@ import Neovim
 import Neovim.GhcModNvim.Types
 import Neovim.GhcModNvim.Plugin
 
-plugin :: Neovim (StartupConfig NeovimConfig) () NeovimPlugin
+plugin :: Neovim (StartupConfig NeovimConfig) NeovimPlugin
 plugin = wrapPlugin Plugin
-  { exports = []
-  , statefulExports =
-    [ StatefulFunctionality
-        { readOnly = ()
-        , writable = initialState
-        , functionalities =
+  { environment = initialEnv
+  , exports =
           [ $(command' 'neoGhcModType)      ["async", "!"]
           , $(command' 'neoGhcModTypeClear) ["async"]
           , $(command' 'neoGhcModCheck)     ["async"]
@@ -22,7 +18,5 @@ plugin = wrapPlugin Plugin
           , $(command' 'neoGhcModLintAll)   ["async"]
           , $(command' 'neoGhcModInfo)      ["async"]
           ]
-      }
-    ]
   }
 

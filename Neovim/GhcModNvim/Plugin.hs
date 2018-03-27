@@ -13,6 +13,12 @@ module Neovim.GhcModNvim.Plugin (
   , neoGhcModTypeClear
   ) where
 
+import           Control.Monad                    (when)
+import qualified Data.ByteString                  as B
+import           Data.String                      (IsString (..))
+import           System.FilePath.Posix            (makeRelative)
+import           UnliftIO.Exception
+
 import           Neovim.GhcModNvim.Utility
 import           Neovim.GhcModNvim.Types
 import           Neovim.GhcModNvim.GhcMod.Parser
@@ -22,20 +28,13 @@ import           Neovim
 import           Neovim.Quickfix                  (QuickfixAction (..),
                                                    QuickfixListItem, setqflist)
 
-import           Control.Lens                     (use)
-import           Control.Lens.Operators
-import           Control.Monad                    (when)
-import qualified Data.ByteString                  as B
-import           Data.String                      (IsString (..))
-import           System.FilePath.Posix            (makeRelative)
-import           Control.Monad.Catch              (catch, SomeException)
 
 -------------------------------------------------------------------------------
 -- :NeoGhcModCheck
 -------------------------------------------------------------------------------
 
 neoGhcModCheck :: CommandArguments -> NeoGhcMod ()
-neoGhcModCheck _ = catchAnyException $
+neoGhcModCheck _ = reportAnyException $
   setQFListAndOpenUnlessEmpty =<< runParser errorParser =<< C.checkSyntax
 
 -------------------------------------------------------------------------------
@@ -43,11 +42,11 @@ neoGhcModCheck _ = catchAnyException $
 -------------------------------------------------------------------------------
 
 neoGhcModLint :: CommandArguments -> NeoGhcMod ()
-neoGhcModLint _ = catchAnyException $
+neoGhcModLint _ = reportAnyException $
   setQFListAndOpenUnlessEmpty =<< runParser errorParser =<< C.lint
 
 neoGhcModLintAll :: CommandArguments -> NeoGhcMod ()
-neoGhcModLintAll _ = catchAnyException $
+neoGhcModLintAll _ = reportAnyException $
   setQFListAndOpenUnlessEmpty =<< runParser errorParser =<< C.lintAll
 
 -------------------------------------------------------------------------------
@@ -55,7 +54,7 @@ neoGhcModLintAll _ = catchAnyException $
 -------------------------------------------------------------------------------
 
 neoGhcModInfo :: CommandArguments -> Maybe String -> NeoGhcMod ()
-neoGhcModInfo _ ms = catchAnyException $ do
+neoGhcModInfo _ ms = reportAnyException $ do
   id' <- maybe nvimCword return ms
   qs  <- runParser infoParser =<< C.info id'
   setqflist qs Replace
@@ -67,20 +66,21 @@ neoGhcModInfo _ ms = catchAnyException $ do
 -------------------------------------------------------------------------------
 
 neoGhcModType :: CommandArguments -> NeoGhcMod ()
-neoGhcModType CommandArguments{ bang } = catchAnyException $ nvimCurrentPos >>= go
+neoGhcModType CommandArguments{ bang } = reportAnyException $ nvimCurrentPos >>= go
   where
     go :: NvimPos -> NeoGhcMod ()
-    go pos@(NvimPos _ line col _) = clearTypeHilight >>
-      use (typeState.tyList) >>= \case
+    go pos@(NvimPos _ line col _) = do
+      clearTypeHilight
+      useTV (typeState.tyList) >>= \case
         [] ->
             typeParser <$> C.types line col >>= \case
               Right []     -> error "NeoGhcModType: Impossible"
-              Right (x:xs) -> display x >> typeState.tyList .= xs
+              Right (x:xs) -> display x >> assignTV (typeState.tyList) xs
               Left _e      -> reportError "Cannot guess type"
         (x@TypeInfo{..} : xs) ->
             if (line1,col1) <= (line,col) && (line,col) <= (line2,col2)
-              then typeState.tyList .= xs >> display x
-              else typeState.tyList .= [] >> go pos
+              then assignTV (typeState.tyList) xs >> display x
+              else assignTV (typeState.tyList) xs >> go pos
 
     display :: TypeInfo -> NeoGhcMod ()
     display TypeInfo{..} = do
@@ -88,7 +88,7 @@ neoGhcModType CommandArguments{ bang } = catchAnyException $ nvimCurrentPos >>= 
                          , "\\%", show' line2, "l", "\\%", show' col2 ,"c" ]
       id' <- errOnInvalidResult $ vim_call_function
                 "matchadd" [ObjectString "Search", ObjectString pat]
-      typeState.matchID .= Just id'
+      assignTV (typeState.matchID) (Just id')
       nvimOutWrite ty
       when (bang == Just True) $ setReg "\"" (fromString ty)
 
@@ -97,13 +97,13 @@ neoGhcModType CommandArguments{ bang } = catchAnyException $ nvimCurrentPos >>= 
       "setreg" [ObjectString reg, ObjectString str]
 
 neoGhcModTypeClear :: CommandArguments -> NeoGhcMod ()
-neoGhcModTypeClear _ = clearTypeHilight >> typeState.tyList .= []
+neoGhcModTypeClear _ = clearTypeHilight >> assignTV (typeState.tyList) []
 
 clearTypeHilight :: NeoGhcMod ()
-clearTypeHilight = use (typeState.matchID) >>= \case
+clearTypeHilight = useTV (typeState.matchID) >>= \case
   Just id' -> do
     void $ vim_call_function' "matchdelete" [ObjectString $ show' id']
-    typeState.matchID .= Nothing
+    assignTV (typeState.matchID) Nothing
   Nothing -> return ()
 
 -------------------------------------------------------------------------------
@@ -125,9 +125,8 @@ setQFListAndOpenUnlessEmpty qs = do
     then cclose >> reportInfo "no errors found"
     else copen
 
-catchAnyException :: NeoGhcMod () -> NeoGhcMod ()
-catchAnyException m = m `catch` \case
-  (e :: SomeException) -> reportError (show e)
+reportAnyException :: NeoGhcMod () -> NeoGhcMod ()
+reportAnyException m = m `catchAny` (reportError . show)
 
 show' :: (IsString s, Show a) => a -> s
 show' = fromString . show

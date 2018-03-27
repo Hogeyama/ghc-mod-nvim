@@ -98,7 +98,7 @@ messagesQF = map strToQFItem <$> messages
 strToQFItem :: String -> Q.QuickfixListItem String
 strToQFItem s = Q.QFItem { Q.bufOrFile     = Right ""
                          , Q.lnumOrPattern = Right ""
-                         , Q.col           = Nothing
+                         , Q.col           = Q.NoColumn
                          , Q.nr            = Nothing
                          , Q.text          = s
                          , Q.errorType     = Warning
@@ -151,7 +151,7 @@ createQFItem :: FilePath -> Int -> Int -> QuickfixErrorType -> Q.QuickfixListIte
 createQFItem file line col ety = Q.QFItem {
     Q.bufOrFile     = Right file
   , Q.lnumOrPattern = Left line
-  , Q.col           = Just (col, True)
+  , Q.col           = Q.ByteIndexColumn col
   , Q.nr            = Nothing
   , Q.text          = ""
   , Q.errorType     = ety

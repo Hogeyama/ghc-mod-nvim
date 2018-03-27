@@ -17,14 +17,15 @@ module Neovim.GhcModNvim.Utility (
   , reportInfo
   , reportError
   , reportErrorAndFail
-  , withReportAllException
+  --, withReportAllException
   , fromObject_
   ) where
 
 import           Neovim
 import           Prelude
+import           Data.String (IsString(..))
 import           Control.Lens
-import           Control.Monad.Catch    (catch, SomeException)
+--import           Control.Monad.Catch    (catch, SomeException)
 
 -------------------------------------------------------------------------------
 -- Types
@@ -42,54 +43,54 @@ makeLenses ''NvimPos
 -- Useful commands
 -------------------------------------------------------------------------------
 
-nvimCwd :: Neovim r st String
+nvimCwd :: Neovim env String
 nvimCwd = errOnInvalidResult $ vim_call_function "getcwd" []
 
-nvimCurrentFile :: Neovim r st String
+nvimCurrentFile :: Neovim env String
 nvimCurrentFile = errOnInvalidResult $ vim_call_function "expand" [ObjectString "%:p"]
 
-nvimCword :: Neovim r st String
+nvimCword :: Neovim env String
 nvimCword = errOnInvalidResult $ vim_call_function "expand" [ObjectString "<cword>"]
 
-nvimCWORD :: Neovim r st String
+nvimCWORD :: Neovim env String
 nvimCWORD = errOnInvalidResult $ vim_call_function "expand" [ObjectString "<cWORD>"]
 
-nvimCurrentPos :: Neovim r st NvimPos
+nvimCurrentPos :: Neovim env NvimPos
 nvimCurrentPos = do
   [bufnum, lnum, col, off] <- errOnInvalidResult $ vim_call_function "getpos" [ObjectString "."]
   return $ NvimPos bufnum lnum col off
 
 -- TODO let copen command be customizable
-copen :: Neovim r st ()
+copen :: Neovim env ()
 copen = void $ vim_command "botright copen"
 
-cclose :: Neovim r st ()
+cclose :: Neovim env ()
 cclose = void $ vim_command "cclose"
 
 -------------------------------------------------------------------------------
 -- Echo, Error
 -------------------------------------------------------------------------------
 
-nvimOutWrite :: String -> Neovim r st ()
+nvimOutWrite :: String -> Neovim env ()
 nvimOutWrite s = void $ nvim_out_write $ s ++ "\n"
 
 -- do not call 'reportErrorAndFail' in argument (or it will be reported twice)
-withReportAllException :: Neovim r st a -> Neovim r st a
-withReportAllException = flip catch $ \(e::SomeException) -> reportErrorAndFail (show e)
+--withReportAllException :: Neovim env a -> Neovim env a
+--withReportAllException = flip catch $ \(e::SomeException) -> reportErrorAndFail (show e)
 
 pluginName :: String
 pluginName = "ghc-mod-nvim"
 
-reportInfo :: String -> Neovim r st ()
+reportInfo :: String -> Neovim env ()
 reportInfo s = nvimOutWrite s'
   where s' = pluginName ++ ": " ++ s
 
-reportError :: String -> Neovim r st ()
+reportError :: String -> Neovim env ()
 reportError s = vim_report_error' s'
   where s' = pluginName ++ ": " ++ s
 
-reportErrorAndFail :: String -> Neovim r st a
-reportErrorAndFail s = reportError s >> err s
+reportErrorAndFail :: String -> Neovim env a
+reportErrorAndFail s = reportError s >> err (fromString s)
 
 fromObject_ :: NvimObject o => Object -> Either NeovimException o
 fromObject_ o = case fromObject o of
