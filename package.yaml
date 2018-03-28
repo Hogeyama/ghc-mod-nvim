@@ -1,0 +1,25 @@
+name:                ghc-mod-nvim
+version:             0.1.0.0
+
+dependencies:
+- base >= 4.7 && < 5
+
+library:
+  source-dirs: src
+  ghc-options:
+    - -Wall
+  dependencies:
+    - nvim-hs >= 1.0.0.0
+    - nvim-hs-contrib >= 1.0.0.0
+    - mtl
+    - stm
+    - lens
+    - extra
+    - parsec
+    - process
+    - deepseq
+    - unliftio
+    - filepath
+    - exceptions
+    - bytestring
+    - basic-prelude
