@@ -7,7 +7,7 @@ copyright:           2017 Naoki Iwayama
 cabal-version:       >=1.10
 
 library
-  ghc-options:          -O3 -Wall -ddump-splices
+  ghc-options:          -O3 -Wall
   exposed-modules:      Neovim.GhcModNvim
   other-modules:        Neovim.GhcModNvim.Utility
                       , Neovim.GhcModNvim.Types

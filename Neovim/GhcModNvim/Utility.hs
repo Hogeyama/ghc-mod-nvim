@@ -11,21 +11,21 @@ module Neovim.GhcModNvim.Utility (
   , nvBufnum, nvCol, nvLnum, nvOff
   , copen
   , cclose
+  , show'
   , nvimCword
   , nvimCWORD
-  , nvimOutWrite
+  , nvimOutWriteLn
   , reportInfo
   , reportError
   , reportErrorAndFail
-  --, withReportAllException
+  , reportAnyException
   , fromObject_
   ) where
 
 import           Neovim
-import           Prelude
+import           UnliftIO
 import           Data.String (IsString(..))
 import           Control.Lens
---import           Control.Monad.Catch    (catch, SomeException)
 
 -------------------------------------------------------------------------------
 -- Types
@@ -71,18 +71,14 @@ cclose = void $ vim_command "cclose"
 -- Echo, Error
 -------------------------------------------------------------------------------
 
-nvimOutWrite :: String -> Neovim env ()
-nvimOutWrite s = void $ nvim_out_write $ s ++ "\n"
-
--- do not call 'reportErrorAndFail' in argument (or it will be reported twice)
---withReportAllException :: Neovim env a -> Neovim env a
---withReportAllException = flip catch $ \(e::SomeException) -> reportErrorAndFail (show e)
+nvimOutWriteLn :: String -> Neovim env ()
+nvimOutWriteLn s = void $ nvim_out_write $ s ++ "\n"
 
 pluginName :: String
 pluginName = "ghc-mod-nvim"
 
 reportInfo :: String -> Neovim env ()
-reportInfo s = nvimOutWrite s'
+reportInfo s = nvimOutWriteLn s'
   where s' = pluginName ++ ": " ++ s
 
 reportError :: String -> Neovim env ()
@@ -92,8 +88,14 @@ reportError s = vim_report_error' s'
 reportErrorAndFail :: String -> Neovim env a
 reportErrorAndFail s = reportError s >> err (fromString s)
 
+reportAnyException :: Neovim env () -> Neovim env ()
+reportAnyException m = m `catchAny` (reportError . show)
+
 fromObject_ :: NvimObject o => Object -> Either NeovimException o
 fromObject_ o = case fromObject o of
   Right x -> Right x
   Left  e -> Left (ErrorMessage e)
+
+show' :: (IsString s, Show a) => a -> s
+show' = fromString . show
 

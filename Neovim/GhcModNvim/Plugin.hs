@@ -17,7 +17,6 @@ import           Control.Monad                    (when)
 import qualified Data.ByteString                  as B
 import           Data.String                      (IsString (..))
 import           System.FilePath.Posix            (makeRelative)
-import           UnliftIO.Exception
 
 import           Neovim.GhcModNvim.Utility
 import           Neovim.GhcModNvim.Types
@@ -89,7 +88,7 @@ neoGhcModType CommandArguments{ bang } = reportAnyException $ nvimCurrentPos >>=
       id' <- errOnInvalidResult $ vim_call_function
                 "matchadd" [ObjectString "Search", ObjectString pat]
       assignTV (typeState.matchID) (Just id')
-      nvimOutWrite ty
+      nvimOutWriteLn ty
       when (bang == Just True) $ setReg "\"" (fromString ty)
 
     setReg :: B.ByteString -> B.ByteString -> NeoGhcMod ()
@@ -124,10 +123,4 @@ setQFListAndOpenUnlessEmpty qs = do
   if null qs
     then cclose >> reportInfo "no errors found"
     else copen
-
-reportAnyException :: NeoGhcMod () -> NeoGhcMod ()
-reportAnyException m = m `catchAny` (reportError . show)
-
-show' :: (IsString s, Show a) => a -> s
-show' = fromString . show
 

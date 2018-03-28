@@ -15,7 +15,6 @@ import           Neovim.GhcModNvim.Types
 import           Data.Maybe              (isJust)
 import           Control.Lens
 import           Control.Monad           (forever, unless)
---import           Control.Monad.Catch     (SomeException, catch)
 import           Data.String             (IsString(..))
 import           System.IO
 import           System.Process
