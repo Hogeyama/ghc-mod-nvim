@@ -125,7 +125,7 @@ ignorableMessage = "Warning: STACK_EXE set, preferring Stack project"
 getRoot :: NeoGhcMod FilePath
 getRoot = do
   cwd' <- nvimCwd
-  let prc = (proc "ghc-mod" ["root"]) { cwd = Just cwd' }
+  let prc = (proc "stack" ["exec", "--", "ghc-mod", "root"]) { cwd = Just cwd' }
   (_, ok, e) <- liftIO $ readCreateProcessWithExitCode prc ""
   if null e || init e == ignorableMessage
     then return $ init ok -- `init` removes a null character added by ghc-mod
