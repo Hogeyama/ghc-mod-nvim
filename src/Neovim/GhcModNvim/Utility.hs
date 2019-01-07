@@ -60,9 +60,8 @@ nvimCurrentPos = do
   [bufnum, lnum, col, off] <- errOnInvalidResult $ vim_call_function "getpos" [ObjectString "."]
   return $ NvimPos bufnum lnum col off
 
--- TODO let copen command be customizable
 copen :: Neovim env ()
-copen = void $ vim_command "botright copen"
+copen = void $ vim_command "copen"
 
 cclose :: Neovim env ()
 cclose = void $ vim_command "cclose"
